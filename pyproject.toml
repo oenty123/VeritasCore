@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veritascore"
+version = "1.0.0"
+description = "Contract-oriented Python SAST with a near-zero false-positive rate. Zero runtime dependencies."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["security", "sast", "static-analysis", "taint", "injection", "python"]
+authors = [{ name = "Dima" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+# No runtime dependencies — pure standard library, by design.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/your-org/veritascore"
+Documentation = "https://github.com/your-org/veritascore/blob/main/USAGE.md"
+
+[project.scripts]
+veritas-core = "veritas_core:cli"
+veritas-secrets = "veritas_secrets:cli"
+veritas-web = "veritas_web:cli"
+
+[tool.setuptools]
+py-modules = ["veritas_core", "veritas_knowledge", "veritas_secrets", "veritas_web"]
+
+[tool.setuptools.package-data]
+"*" = ["*.md"]

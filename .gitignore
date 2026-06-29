@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# VeritasCore specific (новые)
+.veritascore_cache.json
+.veritascore_state.json
+.veritascoreignore
+.gate_policy.json
+*.orig
+*.tmp
+*.log
+
+# Старые артефакты Nexus (для совместимости, если вдруг остались)
+.nexus_cache.json
+.nexus/
+.nexusignore
+.nexus.json
+
+# Тесты и бенчмарки (большие данные, не в репозиторий)
+Real-Vuln-Benchmark/
+realvuln_results_all/
+nexus_realvuln.json
+*.json
+
+# История редактора (если есть)
+.var/
+
+# Расширения VS Code
+*.vsix
+
+# Временные папки для клонов (если есть)
+nexus_clone_*/
+veritas_clone_*/
+
+# Старые проекты, если они лежат в корне (можно закомментировать, если они нужны в репозитории)
+# nexus-security-oss/
+# nexus-vscode/
+# nexus_guard.py

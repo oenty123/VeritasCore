@@ -1,0 +1,47 @@
+# Nexus Security Pro — security gate on every push / PR.
+#
+# Zero dependencies: the engine is pure Python stdlib, so there is nothing to
+# install. Drop this file at .github/workflows/nexus.yml in your repo.
+#
+# NOTE: this workflow is provided as a ready template. It has been written
+# carefully but has NOT been executed on GitHub's runners by the authors
+# (the engine and its exit codes are tested locally). Verify on a test branch
+# before making it a required check.
+name: Nexus security gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  nexus-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The gate exits non-zero on a proven `unguarded` violation, failing the
+      # check. `unknown` (honest abstention) does not fail the build.
+      - name: Run Nexus gate
+        run: python3 nexus_guard.py . 
+
+      # Always produce a full audit artifact for review (non-blocking).
+      - name: Nexus audit (report)
+        if: always()
+        run: python3 nexus_guard.py . --audit --json > nexus-audit.json || true
+
+      - name: Secret scan (report)
+        if: always()
+        run: python3 secrets_scan.py . || true
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-audit
+          path: nexus-audit.json

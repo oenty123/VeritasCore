@@ -1,0 +1,11 @@
+#!/bin/sh
+# Nexus security gate as a git pre-commit hook (team/coop mode).
+# Install: cp hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Scans only the files you are committing; blocks the commit on a proven issue.
+python3 nexus_guard.py . --changed --fast
+status=$?
+if [ $status -ne 0 ]; then
+  echo "Nexus: proven security issue in changed code — commit blocked."
+  echo "Fix it, or review and re-run. To bypass once: git commit --no-verify"
+fi
+exit $status
