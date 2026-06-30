@@ -9,7 +9,7 @@ suite includes invariant tests (`PrincipleZero`) proving the engine never report
 `unknown`. What the maintainers cannot verify (live VS Code, real network clone)
 is marked unverified rather than implied to work.
 
-# VeritasCore Security Pro
+# VeritasCore
 
 A **contract-oriented** security gate for Python, delivered as a VS Code extension plus
 the `veritas_core.py` engine. Instead of imposing a generic ruleset, VeritasCore learns the guard

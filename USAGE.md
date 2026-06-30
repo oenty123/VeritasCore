@@ -1,4 +1,4 @@
-# VeritasCore Security Pro — usage reference
+# VeritasCore — usage reference
 
 Zero dependencies (Python 3.10+ standard library only). No `pip install` needed.
 
