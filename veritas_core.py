@@ -232,6 +232,12 @@ SOURCE_SUBSCRIPTS = {
     "sanic.request.Request.args",
     "falcon.Request.params",
 }
+# Вызовы, которые никогда не должны считаться уязвимостью (безопасны по своей природе)
+SAFE_SINKS = {
+    "json.loads",
+    "json.load",
+    # при необходимости добавляйте другие безопасные функции
+}
 
 # ============================================================================
 #  УТИЛИТЫ ДЛЯ РАБОТЫ С AST
@@ -729,11 +735,20 @@ def expr_status(ctx: AnalysisContext, expr: ast.AST, scope: ast.AST,
     if cache_key in ctx._expr_cache:
         return ctx._expr_cache[cache_key]
 
-    g = embedded_guard(ctx, expr)
+        g = embedded_guard(ctx, expr)
     if g:
         result = (GUARDED, g)
         ctx._expr_cache[cache_key] = result
         return result
+
+    # === НОВЫЙ БЛОК: распознавание глобальных констант ===
+    if isinstance(expr, ast.Name):
+        if expr.id in ctx.module_globals:
+            node, val = ctx.module_globals[expr.id]
+            if is_constant(val):
+                result = (SAFE, None)
+                ctx._expr_cache[cache_key] = result
+                return result
 
     if isinstance(expr, ast.Call):
         if is_source_call(expr):
@@ -1169,8 +1184,17 @@ def classify_open(ctx: AnalysisContext, scope: ast.AST, call: ast.Call) -> Tuple
     finally:
         ctx.allowed_guards = old_allowed
 
-def classify_sink(ctx: AnalysisContext, scope_node: ast.AST, sink_call: ast.Call) -> Tuple[str, Optional[str]]:
+def classify_sink(ctx, scope_node, sink_call):
     name = sink_name(sink_call)
+    
+    # === НОВЫЙ БЛОК: безопасные sink'и (json.loads и др.) ===
+    if name in SAFE_SINKS:
+        # Никогда не считаем опасным, даже если аргумент из внешнего источника
+        # Если аргумент — константа, считаем safe, иначе unknown (честное воздержание)
+        if sink_call.args and is_constant(sink_call.args[0]):
+            return (SAFE, None)
+        return (UNKNOWN, None)
+
     if name in ("sqlite3.execute", "sqlite3.executescript"):
         return classify_sql(ctx, scope_node, sink_call)
     if name == "open":
