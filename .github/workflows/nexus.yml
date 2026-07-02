@@ -1,4 +1,4 @@
-# Nexus Security Pro — security gate on every push / PR.
+# VeritasCore — security gate on every push / PR.
 #
 # Zero dependencies: the engine is pure Python stdlib, so there is nothing to
 # install. Drop this file at .github/workflows/nexus.yml in your repo.
