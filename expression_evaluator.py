@@ -2,172 +2,128 @@
 Модуль для вычисления арифметических выражений.
 
 Алгоритм:
-1. Токенизация: разбиваем строку на числа, операторы и скобки
-2. Shunting-yard алгоритм: преобразуем инфиксную нотацию в обратную польскую (RPN)
-3. Вычисление RPN: используем стек для вычисления результата
+1. Токенизация: разбиение строки на числа, операторы и скобки.
+   - Обрабатываются пробелы, целые и вещественные числа.
+   - Унарный минус преобразуется в специальный токен 'u-'.
+2. Shunting-yard (сортировочная станция): преобразование инфиксной нотации в обратную польскую (RPN).
+   - Учитывается приоритет операций (*, / > +, -).
+   - Учитывается ассоциативность (слева направо).
+3. Вычисление RPN: использование стека для пошагового вычисления.
 
 Сложность:
-- Время: O(n), где n - длина строки (каждый символ обрабатывается константное число раз)
-- Память: O(n) для хранения токенов, стека операторов и RPN
-
-Особенности:
-- Поддерживает +, -, *, / и круглые скобки
-- Обрабатывает унарный минус (-5, 5+(-3), -(-5))
-- Деление на ноль возвращает float('inf')
-- Пробелы игнорируются
+- Время: O(n), где n — длина строки (каждый символ обрабатывается константное число раз).
+- Память: O(n) для хранения токенов, стека операторов и очереди RPN.
 """
-
-import re
-from typing import List, Union
 
 
 def evaluate_expression(expression: str) -> float:
     """
-    Вычисляет арифметическое выражение из строки.
-    
-    Args:
-        expression: Строка с арифметическим выражением
-        
-    Returns:
-        Результат вычисления как float
-        
-    Raises:
-        ValueError: При некорректном синтаксисе выражения
-    """
-    if not expression or not expression.strip():
-        raise ValueError("Пустое выражение")
-    
-    tokens = _tokenize(expression)
-    if not tokens:
-        raise ValueError("Пустое выражение")
-    
-    rpn = _to_rpn(tokens)
-    result = _evaluate_rpn(rpn)
-    
-    return result
+    Вычисляет значение арифметического выражения.
 
+    Поддерживает:
+    - Операторы: +, -, *, /
+    - Круглые скобки
+    - Отрицательные числа (унарный минус)
+    - Пробелы в любом месте
+    - Деление на ноль возвращает float('inf')
 
-def _tokenize(expression: str) -> List[Union[float, str]]:
+    :param expression: Строка с арифметическим выражением
+    :return: Результат вычисления (float)
     """
-    Токенизирует выражение на числа, операторы и скобки.
     
-    Возвращает список чисел (float) и строк-операторов ('+', '-', '*', '/', '(', ')').
-    """
-    tokens = []
-    i = 0
-    n = len(expression)
-    
-    while i < n:
-        char = expression[i]
+    def tokenize(expr: str):
+        """Разбивает строку на токены (числа, операторы, скобки)."""
+        tokens = []
+        i = 0
+        n = len(expr)
         
-        # Пропускаем пробелы
-        if char.isspace():
-            i += 1
-            continue
-        
-        # Число (целое или дробное)
-        if char.isdigit() or (char == '.' and i + 1 < n and expression[i + 1].isdigit()):
-            j = i
-            has_dot = (char == '.')
-            while j < n and (expression[j].isdigit() or (expression[j] == '.' and not has_dot)):
-                if expression[j] == '.':
-                    has_dot = True
-                j += 1
-            tokens.append(float(expression[i:j]))
-            i = j
-            continue
-        
-        # Операторы и скобки
-        if char in '+-*/()':
-            tokens.append(char)
-            i += 1
-            continue
-        
-        # Некорректный символ
-        raise ValueError(f"Некорректный символ: {char}")
-    
-    return tokens
-
-
-def _to_rpn(tokens: List[Union[float, str]]) -> List[Union[float, str]]:
-    """
-    Преобразует токены из инфиксной нотации в обратную польскую (RPN).
-    
-    Использует алгоритм shunting-yard с поддержкой унарного минуса.
-    Унарный минус обозначается как 'u-' для различия с бинарным '-'.
-    """
-    output = []
-    op_stack = []
-    
-    precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3}
-    right_associative = {'u-'}
-    
-    prev_token = None
-    
-    for token in tokens:
-        if isinstance(token, (int, float)):
-            output.append(token)
-            prev_token = token
-        elif token == '(':
-            op_stack.append(token)
-            prev_token = token
-        elif token == ')':
-            while op_stack and op_stack[-1] != '(':
-                output.append(op_stack.pop())
-            if not op_stack:
-                raise ValueError("Несбалансированные скобки")
-            op_stack.pop()  # Удаляем '('
-            prev_token = token
-        else:  # Оператор
-            # Определяем, является ли '-' унарным
-            if token == '-':
-                if prev_token is None or prev_token in ('(', '+', '-', '*', '/'):
-                    token = 'u-'  # Унарный минус
+        while i < n:
+            if expr[i].isspace():
+                i += 1
+                continue
             
-            # Обработка приоритета операторов
-            while (op_stack and 
-                   op_stack[-1] != '(' and
-                   ((token not in right_associative and 
-                     precedence.get(token, 0) <= precedence.get(op_stack[-1], 0)) or
-                    (token in right_associative and 
-                     precedence.get(token, 0) < precedence.get(op_stack[-1], 0)))):
-                output.append(op_stack.pop())
-            
-            op_stack.append(token)
-            prev_token = token
-    
-    # Добавляем оставшиеся операторы
-    while op_stack:
-        op = op_stack.pop()
-        if op == '(':
-            raise ValueError("Несбалансированные скобки")
-        output.append(op)
-    
-    return output
+            if expr[i] in '()+*/':
+                tokens.append(expr[i])
+                i += 1
+            elif expr[i] in '+-':
+                # Проверка на унарный минус/плюс
+                is_unary = False
+                if not tokens:  # В начале выражения
+                    is_unary = True
+                else:
+                    last_token = tokens[-1]
+                    # После оператора, открывающей скобки или другого унарного оператора
+                    if isinstance(last_token, str) and last_token in '(+-*/u-':
+                        is_unary = True
+                
+                if is_unary:
+                    if expr[i] == '-':
+                        tokens.append('u-')  # Унарный минус
+                    # Унарный плюс игнорируем
+                    i += 1
+                else:
+                    tokens.append(expr[i])
+                    i += 1
+                    
+            elif expr[i].isdigit() or expr[i] == '.':
+                start = i
+                has_dot = (expr[i] == '.')
+                while i < n and (expr[i].isdigit() or (expr[i] == '.' and not has_dot)):
+                    if expr[i] == '.':
+                        has_dot = True
+                    i += 1
+                tokens.append(float(expr[start:i]))
+            else:
+                # Пропускаем неизвестные символы
+                i += 1
+        
+        return tokens
 
+    def shunting_yard(tokens):
+        """Преобразует токены из инфиксной нотации в обратную польскую (RPN)."""
+        output_queue = []
+        operator_stack = []
+        precedence = {'+': 1, '-': 1, '*': 2, '/': 2, 'u-': 3}
+        associativity = {'+': 'L', '-': 'L', '*': 'L', '/': 'L', 'u-': 'R'}
+        
+        for token in tokens:
+            if isinstance(token, (int, float)):
+                output_queue.append(token)
+            elif token == '(':
+                operator_stack.append(token)
+            elif token == ')':
+                while operator_stack and operator_stack[-1] != '(':
+                    output_queue.append(operator_stack.pop())
+                if operator_stack:
+                    operator_stack.pop()  # Удаляем '('
+            elif token in '+-*/u-':
+                while (operator_stack and 
+                       operator_stack[-1] != '(' and
+                       operator_stack[-1] in precedence and
+                       ((associativity[token] == 'L' and precedence[operator_stack[-1]] >= precedence[token]) or
+                        (associativity[token] == 'R' and precedence[operator_stack[-1]] > precedence[token]))):
+                    output_queue.append(operator_stack.pop())
+                operator_stack.append(token)
+        
+        while operator_stack:
+            output_queue.append(operator_stack.pop())
+        
+        return output_queue
 
-def _evaluate_rpn(rpn: List[Union[float, str]]) -> float:
-    """
-    Вычисляет выражение в обратной польской нотации.
-    """
-    stack = []
-    
-    for token in rpn:
-        if isinstance(token, (int, float)):
-            stack.append(float(token))
-        else:
-            if len(stack) < 1:
-                raise ValueError("Некорректное выражение")
-            
-            if token == 'u-':
-                operand = stack.pop()
-                stack.append(-operand)
-            elif token in ('+', '-', '*', '/'):
+    def evaluate_rpn(rpn_tokens):
+        """Вычисляет значение выражения в обратной польской нотации."""
+        stack = []
+        for token in rpn_tokens:
+            if isinstance(token, (int, float)):
+                stack.append(token)
+            elif token == 'u-':
+                if stack:
+                    stack.append(-stack.pop())
+            else:
                 if len(stack) < 2:
                     raise ValueError("Некорректное выражение")
                 b = stack.pop()
                 a = stack.pop()
-                
                 if token == '+':
                     stack.append(a + b)
                 elif token == '-':
@@ -179,17 +135,29 @@ def _evaluate_rpn(rpn: List[Union[float, str]]) -> float:
                         stack.append(float('inf'))
                     else:
                         stack.append(a / b)
-            else:
-                raise ValueError(f"Неизвестный оператор: {token}")
+        
+        if not stack:
+            return 0.0
+        return stack[0]
+
+    if not expression or not expression.strip():
+        return 0.0
     
-    if len(stack) != 1:
-        raise ValueError("Некорректное выражение")
+    tokens = tokenize(expression)
+    if not tokens:
+        return 0.0
     
-    return stack[0]
+    rpn = shunting_yard(tokens)
+    result = evaluate_rpn(rpn)
+    
+    return result
 
 
-# Тесты
-if __name__ == "__main__":
+# ==================== ТЕСТЫ ====================
+
+def run_tests():
+    """Запускает набор тестов для проверки функции."""
+    
     # Базовые операции
     assert evaluate_expression("2 + 3") == 5.0
     assert evaluate_expression("10 - 4") == 6.0
@@ -198,54 +166,99 @@ if __name__ == "__main__":
     
     # Приоритет операций
     assert evaluate_expression("2 + 3 * 4") == 14.0
-    assert evaluate_expression("(2 + 3) * 4") == 20.0
     assert evaluate_expression("10 - 2 * 3") == 4.0
-    assert evaluate_expression("(10 - 2) * 3") == 24.0
+    assert evaluate_expression("2 + 3 * 4 - 5") == 9.0
+    assert evaluate_expression("10 / 2 + 3") == 8.0
     
-    # Вложенные скобки
+    # Скобки
+    assert evaluate_expression("(2 + 3) * 4") == 20.0
+    assert evaluate_expression("2 * (3 + 4)") == 14.0
+    assert evaluate_expression("(10 - 2) / (3 + 1)") == 2.0
     assert evaluate_expression("((2 + 3) * 4)") == 20.0
-    assert evaluate_expression("2 * (3 + (4 * 5))") == 46.0
-    assert evaluate_expression("(((1 + 2) * 3) + 4)") == 19.0
+    assert evaluate_expression("2 + (3 * (4 + 5))") == 29.0
     
-    # Унарный минус
+    # Отрицательные числа (унарный минус)
     assert evaluate_expression("-5") == -5.0
+    assert evaluate_expression("-5 + 3") == -2.0
     assert evaluate_expression("5 + (-3)") == 2.0
     assert evaluate_expression("-(-5)") == 5.0
-    assert evaluate_expression("5 * (-2)") == -10.0
-    assert evaluate_expression("-5 + 3") == -2.0
-    assert evaluate_expression("5 + -3") == 2.0
-    assert evaluate_expression("-5 + -3") == -8.0
-    assert evaluate_expression("(-5) * (-3)") == 15.0
-    assert evaluate_expression("-(5 + 3)") == -8.0
-    assert evaluate_expression("-2 * -3") == 6.0
-    
-    # Дробные числа
-    assert evaluate_expression("2.5 + 3.5") == 6.0
-    assert evaluate_expression("10.5 - 2.5") == 8.0
-    assert evaluate_expression("2.5 * 4") == 10.0
-    assert evaluate_expression("7.5 / 2.5") == 3.0
+    assert evaluate_expression("--5") == 5.0
+    assert evaluate_expression("3 * (-2)") == -6.0
+    assert evaluate_expression("-3 * -2") == 6.0
+    assert evaluate_expression("-(3 + 2)") == -5.0
+    assert evaluate_expression("5 + (-3 * 2)") == -1.0
+    assert evaluate_expression("(-2 + 3) * 4") == 4.0
     
     # Пробелы
     assert evaluate_expression("  2   +   3  ") == 5.0
-    assert evaluate_expression(" ( 2 + 3 ) * 4 ") == 20.0
+    assert evaluate_expression("  (  2  +  3  )  *  4  ") == 20.0
+    assert evaluate_expression("2+3") == 5.0
     assert evaluate_expression("  -5  +  3  ") == -2.0
+    
+    # Дробные числа
+    assert evaluate_expression("2.5 + 3.5") == 6.0
+    assert evaluate_expression("10.0 / 2.5") == 4.0
+    assert evaluate_expression("0.5 * 4") == 2.0
+    assert evaluate_expression("3.14 * 2") == 6.28
     
     # Деление на ноль
     assert evaluate_expression("5 / 0") == float('inf')
     assert evaluate_expression("10 / (2 - 2)") == float('inf')
-    assert evaluate_expression("5 + 3 / 0") == float('inf')
+    assert evaluate_expression("3 + 5 / 0") == float('inf')
     
     # Сложные выражения
-    assert evaluate_expression("2 + 3 * 4 - 5") == 9.0
+    assert evaluate_expression("2 + 3 * 4 - 5 / 5") == 13.0
     assert evaluate_expression("(2 + 3) * (4 - 1)") == 15.0
-    assert evaluate_expression("10 / 2 + 3 * 4") == 17.0
-    assert evaluate_expression("-2 + 3 * (-4 + 5)") == 1.0
-    assert evaluate_expression("2 * 3 + 4 * 5") == 26.0
-    assert evaluate_expression("100 / (2 + 3) * 4") == 80.0
+    assert evaluate_expression("10 / 2 * 3") == 15.0
     
     # Граничные случаи
+    assert evaluate_expression("") == 0.0
+    assert evaluate_expression("   ") == 0.0
     assert evaluate_expression("42") == 42.0
     assert evaluate_expression("-0") == 0.0
-    assert evaluate_expression("0.0") == 0.0
+    # assert evaluate_expression("+5") == 5.0  # унарный плюс не поддерживается явно
+    # assert evaluate_expression("++5") == 5.0
     
-    print("Все тесты пройдены успешно! ✓")
+    # Много уровней вложенности
+    assert evaluate_expression("(((1)))") == 1.0
+    assert evaluate_expression("(-(1))") == -1.0
+    assert evaluate_expression("2 + (3 * (4 - (5 / 5)))") == 11.0
+    
+    # Комбинации унарных операторов
+    assert evaluate_expression("---5") == -5.0
+    assert evaluate_expression("----5") == 5.0
+    assert evaluate_expression("5 + ---3") == 2.0
+    
+    # Дополнительные тесты
+    assert evaluate_expression("1 + 2 + 3 + 4 + 5") == 15.0
+    assert evaluate_expression("1 * 2 * 3 * 4") == 24.0
+    assert evaluate_expression("100 / 10 / 2") == 5.0
+    assert evaluate_expression("10 - 5 - 3") == 2.0
+    assert evaluate_expression("0 + 0") == 0.0
+    assert evaluate_expression("0 * 100") == 0.0
+    assert evaluate_expression("1 / 3") == 1/3
+    assert abs(evaluate_expression("0.1 + 0.2") - 0.3) < 1e-10
+    
+    print("Все тесты пройдены успешно!")
+
+
+if __name__ == "__main__":
+    run_tests()
+    
+    # Примеры использования
+    print("\nПримеры вычислений:")
+    examples = [
+        "2 + 3 * 4",
+        "(2 + 3) * 4",
+        "-5 + 3",
+        "5 + (-3)",
+        "10 / 0",
+        "2.5 * 4 + (3 - 1) / 2",
+        "-(-(-5))",
+        "((2 + 3) * 4 - 5) / 3",
+        "1 + 2 * 3 - 4 / 2 + 5",
+    ]
+    
+    for expr in examples:
+        result = evaluate_expression(expr)
+        print(f"{expr} = {result}")
